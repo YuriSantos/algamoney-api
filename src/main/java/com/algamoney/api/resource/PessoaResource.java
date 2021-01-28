@@ -1,4 +1,4 @@
-package com.example.algamoney.api.resource;
+package com.algamoney.api.resource;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
@@ -19,10 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.algamoney.api.event.RecursoCriadoEvent;
-import com.example.algamoney.api.model.Pessoa;
-import com.example.algamoney.api.repository.PessoaRepository;
-import com.example.algamoney.api.service.PessoaService;
+import com.algamoney.api.event.RecursoCriadoEvent;
+import com.algamoney.api.model.Pessoa;
+import com.algamoney.api.repository.PessoaRepository;
+import com.algamoney.api.service.PessoaService;
 
 @RestController
 @RequestMapping("/pessoas")

@@ -1,4 +1,4 @@
-package com.example.algamoney.api.model;
+package com.algamoney.api.model;
 
 import javax.persistence.Embeddable;
 

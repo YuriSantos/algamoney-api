@@ -1,4 +1,4 @@
-package com.example.algamoney.api.resource;
+package com.algamoney.api.resource;
 
 import java.util.List;
 
@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.algamoney.api.event.RecursoCriadoEvent;
-import com.example.algamoney.api.model.Categoria;
-import com.example.algamoney.api.repository.CategoriaRepository;
+import com.algamoney.api.event.RecursoCriadoEvent;
+import com.algamoney.api.model.Categoria;
+import com.algamoney.api.repository.CategoriaRepository;
 
 @RestController
 @RequestMapping("/categorias")
