@@ -12,6 +12,8 @@ import com.example.algamoney.api.repository.projection.ResumoLancamento;
 import com.example.algamoney.api.service.LancamentoService;
 import com.example.algamoney.api.service.exception.PessoaInexistenteOuInativaException;
 import com.example.algamoney.api.storage.S3;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
@@ -37,8 +39,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -66,7 +66,7 @@ public class LancamentoResource {
 
 	@PostMapping("/anexo")
 	@PreAuthorize("hasAuthority('ROLE_CADASTRAR_LANCAMENTO') and hasAuthority('SCOPE_write')")
-	public Anexo uploadAnexo(@RequestParam MultipartFile anexo) throws IOException {
+	public Anexo uploadAnexo(@RequestParam MultipartFile anexo) {
 		String nome = s3.salvarTemporariamente(anexo);
 		return new Anexo(nome, s3.configurarUrl(nome));
 	}
@@ -111,7 +111,7 @@ public class LancamentoResource {
 	@PreAuthorize("hasAuthority('ROLE_PESQUISAR_LANCAMENTO') and hasAuthority('SCOPE_read')")
 	public ResponseEntity<Lancamento> buscarPeloCodigo(@PathVariable Long codigo) {
 		Optional<Lancamento> lancamento = lancamentoRepository.findById(codigo);
-		return lancamento.isPresent() ? ResponseEntity.ok(lancamento.get()) : ResponseEntity.notFound().build();
+		return lancamento.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
 	}
 		
 	@PostMapping
@@ -126,7 +126,7 @@ public class LancamentoResource {
 	public ResponseEntity<Object> handlePessoaInexistenteOuInativaException(PessoaInexistenteOuInativaException ex) {
 		String mensagemUsuario = messageSource.getMessage("pessoa.inexistente-ou-inativa", null, LocaleContextHolder.getLocale());
 		String mensagemDesenvolvedor = ex.toString();
-		List<Erro> erros = Arrays.asList(new Erro(mensagemUsuario, mensagemDesenvolvedor));
+		List<Erro> erros = List.of(new Erro(mensagemUsuario, mensagemDesenvolvedor));
 		return ResponseEntity.badRequest().body(erros);
 	}
 

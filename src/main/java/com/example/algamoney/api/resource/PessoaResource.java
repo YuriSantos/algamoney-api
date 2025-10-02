@@ -4,6 +4,8 @@ import com.example.algamoney.api.event.RecursoCriadoEvent;
 import com.example.algamoney.api.model.Pessoa;
 import com.example.algamoney.api.repository.PessoaRepository;
 import com.example.algamoney.api.service.PessoaService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -22,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
 import java.util.Optional;
 
 @RestController
@@ -51,7 +51,7 @@ public class PessoaResource {
 	@PreAuthorize("hasAuthority('ROLE_PESQUISAR_PESSOA') and hasAuthority('SCOPE_read')")
 	public ResponseEntity<Pessoa> buscarPeloCodigo(@PathVariable Long codigo) {
 		Optional<Pessoa> pessoa = pessoaRepository.findById(codigo);
-		return pessoa.isPresent() ? ResponseEntity.ok(pessoa.get()) : ResponseEntity.notFound().build();
+		return pessoa.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
 	@DeleteMapping("/{codigo}")

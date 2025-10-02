@@ -7,7 +7,7 @@ import java.util.List;
 @ConfigurationProperties("algamoney")
 public class AlgamoneyApiProperty {
 
-	private String originPermitida = "http://localhost:8000";
+	private String originPermitida = "http://localhost:4200";
 
 	private final Seguranca seguranca = new Seguranca();
 
@@ -41,7 +41,7 @@ public class AlgamoneyApiProperty {
 
 		private String secretAccessKey;
 
-		private String bucket = "aw-algamoney-arquivos";
+		private String bucket = "algamoney-api";
 
 		public String getBucket() {
 			return bucket;

@@ -1,14 +1,16 @@
 package com.example.algamoney.api.event;
 
-import javax.servlet.http.HttpServletResponse;
-
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.ApplicationEvent;
 
+import java.io.Serial;
+
 public class RecursoCriadoEvent extends ApplicationEvent {
+    @Serial
     private static final long serialVersionUID = 1L;
 	
-	private HttpServletResponse response;
-	private Long codigo;
+	private final HttpServletResponse response;
+	private final Long codigo;
 
 	public RecursoCriadoEvent(Object source, HttpServletResponse response, Long codigo) {
 		super(source);

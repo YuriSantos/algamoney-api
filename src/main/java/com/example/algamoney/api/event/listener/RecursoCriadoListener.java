@@ -2,10 +2,9 @@ package com.example.algamoney.api.event.listener;
 
 import java.net.URI;
 
-import javax.servlet.http.HttpServletResponse;
-
 import com.example.algamoney.api.event.RecursoCriadoEvent;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;

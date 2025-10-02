@@ -2,6 +2,8 @@ package com.example.algamoney.api.mail;
 
 import com.example.algamoney.api.model.Lancamento;
 import com.example.algamoney.api.model.Usuario;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -9,8 +11,6 @@ import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -50,7 +50,7 @@ public class Mailer {
 		variaveis.put("lancamentos", vencidos);
 
 		List<String> emails = destinatarios.stream()
-				.map(u -> u.getEmail())
+				.map(Usuario::getEmail)
 				.collect(Collectors.toList());
 
 		this.enviarEmail("testes.algaworks@gmail.com",
@@ -65,8 +65,7 @@ public class Mailer {
 	                        Map<String, Object> variaveis) {
 		Context context = new Context(new Locale("pt", "BR"));
 
-		variaveis.entrySet()
-				.forEach(e -> context.setVariable(e.getKey(), e.getValue()));
+		variaveis.forEach(context::setVariable);
 
 		String mensagem = thymeleaf.process(template, context);
 

@@ -1,14 +1,8 @@
 package com.example.algamoney.api.model;
 
-import java.util.List;
+import jakarta.persistence.*;
 
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.Table;
+import java.util.List;
 
 @Entity
 @Table(name = "usuario")
@@ -84,11 +78,8 @@ public class Usuario {
 			return false;
 		Usuario other = (Usuario) obj;
 		if (codigo == null) {
-			if (other.codigo != null)
-				return false;
-		} else if (!codigo.equals(other.codigo))
-			return false;
-		return true;
-	}
+            return other.codigo == null;
+		} else return codigo.equals(other.codigo);
+    }
 
 }

@@ -3,13 +3,12 @@ package com.example.algamoney.api.resource;
 import java.util.List;
 import java.util.Optional;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
-
 import com.example.algamoney.api.event.RecursoCriadoEvent;
 import com.example.algamoney.api.model.Categoria;
 import com.example.algamoney.api.repository.CategoriaRepository;
 
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -53,7 +52,7 @@ public class CategoriaResource {
     public ResponseEntity<Categoria> buscarPeloCodigo(@PathVariable Long codigo) {
         Optional<Categoria> categoria = categoriaRepository.findById(codigo);
 
-        return categoria.isPresent() ? ResponseEntity.ok(categoria.get()) : ResponseEntity.notFound().build();
+        return categoria.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
     
 }
