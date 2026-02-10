@@ -2,14 +2,14 @@ package com.example.algamoney.api.mail;
 
 import com.example.algamoney.api.model.Lancamento;
 import com.example.algamoney.api.model.Usuario;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,72 +20,65 @@ import java.util.stream.Collectors;
 @Component
 public class Mailer {
 
-	@Autowired
-	private JavaMailSender mailSender;
+    private static final Logger log = LoggerFactory.getLogger(Mailer.class);
 
-	@Autowired
-	private TemplateEngine thymeleaf;
+    @Autowired
+    private TemplateEngine thymeleaf;
 
-//	@Autowired
-//	private LancamentoRepository repo;
-//	
-//	@EventListener
-//	private void teste(ApplicationReadyEvent event) {
-//		String template = "mail/aviso-lancamentos-vencidos";
-//
-//		List<Lancamento> lista = repo.findAll();
-//
-//		Map<String, Object> variaveis = new HashMap<>();
-//		variaveis.put("lancamentos", lista);
-//
-//		this.enviarEmail("testes.algaworks@gmail.com", 
-//				Arrays.asList("alexandre.algaworks@gmail.com"), 
-//				"Testando", template, variaveis);
-//		System.out.println("Terminado o envio de e-mail...");
-//	}
+    @Autowired
+    private SesClient sesClient;
 
-	public void avisarSobreLancamentosVencidos(
-			List<Lancamento> vencidos, List<Usuario> destinatarios) {
-		Map<String, Object> variaveis = new HashMap<>();
-		variaveis.put("lancamentos", vencidos);
+    public void avisarSobreLancamentosVencidos(
+            List<Lancamento> vencidos, List<Usuario> destinatarios) {
+        log.info("Iniciando processo de aviso sobre lançamentos vencidos.");
+        Map<String, Object> variaveis = new HashMap<>();
+        variaveis.put("lancamentos", vencidos);
 
-		List<String> emails = destinatarios.stream()
-				.map(Usuario::getEmail)
-				.collect(Collectors.toList());
+        List<String> emails = destinatarios.stream()
+                .map(Usuario::getEmail)
+                .collect(Collectors.toList());
 
-		this.enviarEmail("testes.algaworks@gmail.com",
-				emails,
-				"Lançamentos vencidos",
-				"mail/aviso-lancamentos-vencidos",
-				variaveis);
-	}
+        log.debug("Enviando e-mail de aviso para {} destinatários.", emails.size());
+        this.enviarEmail("testes.algaworks@gmail.com",
+                emails,
+                "Lançamentos vencidos",
+                "mail/aviso-lancamentos-vencidos",
+                variaveis);
+        log.info("Processo de aviso sobre lançamentos vencidos concluído.");
+    }
 
-	public void enviarEmail(String remetente,
-	                        List<String> destinatarios, String assunto, String template,
-	                        Map<String, Object> variaveis) {
-		Context context = new Context(new Locale("pt", "BR"));
+    public void enviarEmail(String remetente,
+                            List<String> destinatarios, String assunto, String template,
+                            Map<String, Object> variaveis) {
+        log.debug("Processando template de e-mail: {}", template);
+        Context context = new Context(new Locale("pt", "BR"));
+        variaveis.forEach(context::setVariable);
+        String mensagem = thymeleaf.process(template, context);
+        log.debug("Template processado com sucesso.");
 
-		variaveis.forEach(context::setVariable);
+        this.enviarEmail(remetente, destinatarios, assunto, mensagem);
+    }
 
-		String mensagem = thymeleaf.process(template, context);
+    public void enviarEmail(String remetente,
+                            List<String> destinatarios, String assunto, String mensagem) {
+        log.info("Enviando e-mail. Assunto: '{}', Remetente: '{}', Destinatários: {}", assunto, remetente, destinatarios);
+        try {
+            SendEmailRequest request = SendEmailRequest.builder()
+                    .source(remetente)
+                    .destination(Destination.builder().toAddresses(destinatarios).build())
+                    .message(Message.builder()
+                            .subject(Content.builder().data(assunto).build())
+                            .body(Body.builder()
+                                    .html(Content.builder().data(mensagem).build())
+                                    .build())
+                            .build())
+                    .build();
 
-		this.enviarEmail(remetente, destinatarios, assunto, mensagem);
-	}
-
-	public void enviarEmail(String remetente,
-	                        List<String> destinatarios, String assunto, String mensagem) {
-		try {
-			MimeMessage mimeMessage = mailSender.createMimeMessage();
-
-			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
-			helper.setFrom(remetente);
-			helper.setTo(destinatarios.toArray(new String[destinatarios.size()]));
-			helper.setSubject(assunto);
-			helper.setText(mensagem, true);
-
-			mailSender.send(mimeMessage);
-		} catch (MessagingException e) {
-			throw new RuntimeException("Problemas com o envio de e-mail!", e);
-		}
-	}
+            sesClient.sendEmail(request);
+            log.info("E-mail enviado com sucesso para: {}", destinatarios);
+        } catch (SesException e) {
+            log.error("Erro ao enviar e-mail via SES. Assunto: '{}', Destinatários: {}", assunto, destinatarios, e);
+            throw new RuntimeException("Problemas com o envio de e-mail!", e);
+        }
+    }
 }
