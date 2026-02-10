@@ -1,5 +1,7 @@
 package com.example.algamoney.api.config;
 
+import com.example.algamoney.api.config.grant.ResourceOwnerPasswordAuthenticationConverter;
+import com.example.algamoney.api.config.grant.ResourceOwnerPasswordAuthenticationProvider;
 import com.example.algamoney.api.config.property.AlgamoneyApiProperty;
 import com.example.algamoney.api.security.UsuarioSistema;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -13,6 +15,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
@@ -20,16 +23,18 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2Token;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.*;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -51,6 +56,28 @@ public class AuthServerConfig {
     @Autowired
     private AlgamoneyApiProperty algamoneyApiProperty;
 
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JWKSource<SecurityContext> jwkSource;
+
+    @Bean
+    public OAuth2AuthorizationService authorizationService() {
+        return new InMemoryOAuth2AuthorizationService();
+    }
+
+    @Bean
+    public OAuth2TokenGenerator<?> tokenGenerator() {
+        JwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource);
+        JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder);
+        jwtGenerator.setJwtCustomizer(jwtBuildCustomizer());
+        OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
+        OAuth2RefreshTokenGenerator refreshTokenGenerator = new OAuth2RefreshTokenGenerator();
+        return new DelegatingOAuth2TokenGenerator(
+                jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
+    }
+
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
         RegisteredClient angularClient = RegisteredClient
@@ -60,6 +87,7 @@ public class AuthServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
                 .redirectUris(uris -> uris.addAll(algamoneyApiProperty.getSeguranca().getRedirectsPermitidos()))
                 .redirectUri("http://localhost:8080/authorized")
                 .scope("read")
@@ -98,9 +126,17 @@ public class AuthServerConfig {
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authServerFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authServerFilterChain(HttpSecurity http,
+                                                     OAuth2AuthorizationService authorizationService,
+                                                     OAuth2TokenGenerator<?> tokenGenerator) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
-                OAuth2AuthorizationServerConfigurer.authorizationServer();
+                new OAuth2AuthorizationServerConfigurer();
+
+        authorizationServerConfigurer
+                .tokenEndpoint(tokenEndpoint -> tokenEndpoint
+                        .accessTokenRequestConverter(new ResourceOwnerPasswordAuthenticationConverter())
+                        .authenticationProvider(new ResourceOwnerPasswordAuthenticationProvider(authenticationManager, authorizationService, tokenGenerator))
+                );
 
         RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
 
@@ -131,33 +167,5 @@ public class AuthServerConfig {
                 context.getClaims().claim("authorities", authorities);
             }
         };
-    }
-
-    @Bean
-    public JWKSet jwkSet() throws Exception {
-        File file = new ClassPathResource("keystore/algamoney.jks").getFile();
-
-        KeyStore keyStore = KeyStore.Builder.newInstance(file,
-                new KeyStore.PasswordProtection("123456".toCharArray())
-        ).getKeyStore();
-
-        RSAKey rsaKey = RSAKey.load(
-                keyStore,
-                "algamoney",
-                "123456".toCharArray()
-        );
-
-        return new JWKSet(rsaKey);
-    }
-
-    @Bean
-    public JWKSource<SecurityContext> jwkSource(JWKSet jwkSet) {
-        return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() throws Exception {
-        RSAKey rsaKey = (RSAKey) jwkSet().getKeys().getFirst();
-        return NimbusJwtDecoder.withPublicKey(rsaKey.toRSAPublicKey()).build();
     }
 }
